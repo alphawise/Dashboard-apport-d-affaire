@@ -1,5 +1,7 @@
 export const config = { api: { bodyParser: true } };
 
+const DB_ID = '58ad64f9-3805-4777-b927-2474606df624';
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -8,24 +10,46 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const dbId = req.body?.dbId;
-  if (!dbId) return res.status(400).json({ error: 'Missing dbId' });
-
   const token = process.env.NOTION_TOKEN;
-  if (!token) return res.status(500).json({ error: 'NOTION_TOKEN not set' });
+  if (!token) return res.status(500).json({ error: 'NOTION_TOKEN non configuré sur Vercel' });
 
   try {
-    const response = await fetch(`https://api.notion.com/v1/databases/${dbId}/query`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Notion-Version': '2022-06-28',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ sorts: [{ property: 'Date', direction: 'ascending' }] })
-    });
-    const data = await response.json();
-    return res.status(200).json(data);
+    let allResults = [];
+    let hasMore = true;
+    let startCursor;
+
+    while (hasMore) {
+      const payload = {
+        sorts: [{ property: 'Date', direction: 'ascending' }],
+        filter: {
+          property: 'Apporteur',
+          rich_text: { equals: 'Hugo Declimmer' }
+        }
+      };
+      if (startCursor) payload.start_cursor = startCursor;
+
+      const response = await fetch(`https://api.notion.com/v1/databases/${DB_ID}/query`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Notion-Version': '2022-06-28',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        return res.status(response.status).json(errData);
+      }
+
+      const data = await response.json();
+      allResults = allResults.concat(data.results || []);
+      hasMore = data.has_more === true;
+      startCursor = data.next_cursor || undefined;
+    }
+
+    return res.status(200).json({ results: allResults, count: allResults.length });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
