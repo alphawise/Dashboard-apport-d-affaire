@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dashboard Hugo · AlphaWise</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=Inter:wght@600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
 :root {
@@ -166,11 +166,13 @@ h1 .name {
 }
 
 .stat-value {
+  font-family: 'Inter', sans-serif;
   font-size: 28px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--text);
-  letter-spacing: -.04em;
+  letter-spacing: -.03em;
   line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
 .stat-value.green {
   background: linear-gradient(120deg, #00E5A0 10%, #00C4FF 90%);
