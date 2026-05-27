@@ -3,231 +3,332 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AlphaWise × Hugo</title>
+<title>Dashboard Hugo · AlphaWise</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
 :root {
-  --bg: #080A0F;
-  --surface: #0E1118;
-  --border: rgba(255,255,255,0.06);
-  --green: #00E5A0;
-  --gold: #C9A84C;
-  --text: #F0EDE6;
-  --muted: #5A5F6E;
-  --danger: #FF6B6B;
-  --orange: #FF9A3C;
+  --bg:       #060810;
+  --surface:  #0B0E17;
+  --s2:       #0F1220;
+  --border:   rgba(255,255,255,0.055);
+  --border-hi: rgba(255,255,255,0.10);
+  --green:    #00E5A0;
+  --cyan:     #00C4FF;
+  --gold:     #C9A84C;
+  --text:     #EAE8E2;
+  --dim:      #74809A;
+  --muted:    #3E4557;
+  --danger:   #FF6060;
 }
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
+
 body {
   font-family: 'Syne', sans-serif;
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
-  padding: 32px 28px;
+  padding: 28px 24px 48px;
   overflow-x: hidden;
 }
-body::before {
-  content: '';
-  position: fixed;
-  top: -200px; left: -200px;
-  width: 600px; height: 600px;
-  background: radial-gradient(circle, rgba(0,229,160,0.04) 0%, transparent 70%);
-  pointer-events: none;
+
+/* Ambient glow */
+.glow-tl, .glow-br {
+  position: fixed; pointer-events: none; border-radius: 50%; z-index: 0;
+}
+.glow-tl {
+  top: -280px; left: -120px;
+  width: 680px; height: 680px;
+  background: radial-gradient(circle, rgba(0,229,160,0.038) 0%, transparent 65%);
+}
+.glow-br {
+  bottom: -220px; right: -80px;
+  width: 520px; height: 520px;
+  background: radial-gradient(circle, rgba(0,196,255,0.028) 0%, transparent 65%);
 }
 
-/* HEADER */
+/* ── HEADER ────────────────────────────────── */
 .header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 36px;
+  align-items: center;
+  margin-bottom: 28px;
+  position: relative; z-index: 1;
 }
-.header-left .eyebrow {
-  font-family: 'DM Mono', monospace;
-  font-size: 10px;
-  color: var(--muted);
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  margin-bottom: 6px;
-}
-.header-left h1 {
-  font-size: 22px;
-  font-weight: 800;
-  color: var(--text);
-  letter-spacing: -.02em;
-}
-.header-left h1 span { color: var(--green); }
-.sync-btn {
-  background: none;
-  border: 0.5px solid var(--border);
-  border-radius: 8px;
-  color: var(--muted);
-  font-family: 'DM Mono', monospace;
-  font-size: 10px;
-  padding: 8px 14px;
-  cursor: pointer;
-  letter-spacing: .08em;
-  display: flex; align-items: center; gap: 6px;
-  transition: all .2s;
-}
-.sync-btn:hover { border-color: var(--green); color: var(--green); }
-.sync-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
-@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
 
-/* STATS ROW */
-.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+.eyebrow {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  display: flex; align-items: center; gap: 10px;
+}
+.eyebrow::before {
+  content: '';
+  width: 18px; height: 1px;
+  background: var(--muted);
+  flex-shrink: 0;
+}
+
+h1 {
+  font-size: 38px;
+  font-weight: 800;
+  letter-spacing: -.04em;
+  line-height: 1;
+}
+h1 .label { color: var(--dim); font-weight: 700; }
+h1 .name {
+  background: linear-gradient(120deg, #00E5A0 10%, #00C4FF 90%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-left: 10px;
+}
+
+.sync-btn {
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: 10px;
+  color: var(--dim);
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  padding: 9px 16px;
+  cursor: pointer;
+  letter-spacing: .1em;
+  display: flex; align-items: center; gap: 8px;
+  transition: all .2s;
+  white-space: nowrap;
+}
+.sync-btn:hover {
+  border-color: rgba(0,229,160,0.3);
+  color: var(--green);
+  background: rgba(0,229,160,0.04);
+}
+.sync-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  flex-shrink: 0;
+  animation: pulse 2.2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%,100% { opacity:1; transform:scale(1); }
+  50%      { opacity:.25; transform:scale(.7); }
+}
+
+/* ── STAT CARDS ────────────────────────────── */
+.stats {
+  display: grid;
+  grid-template-columns: 1.55fr 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
+  position: relative; z-index: 1;
+}
+
 .stat {
   background: var(--surface);
   border: 0.5px solid var(--border);
-  border-radius: 12px;
-  padding: 18px 20px;
+  border-radius: 14px;
+  padding: 20px 22px 18px;
   position: relative;
   overflow: hidden;
+  transition: border-color .2s;
 }
-.stat::after {
+.stat:hover { border-color: var(--border-hi); }
+
+/* top shimmer line */
+.stat::before {
   content: '';
   position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(0,229,160,0.3), transparent);
-  opacity: 0;
-  transition: opacity .3s;
+  top: 0; left: 16px; right: 16px; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.07), transparent);
 }
-.stat:hover::after { opacity: 1; }
+
+.stat.featured {
+  background: linear-gradient(140deg, rgba(0,229,160,0.07) 0%, rgba(0,196,255,0.04) 100%);
+  border-color: rgba(0,229,160,0.14);
+}
+.stat.featured::before {
+  background: linear-gradient(90deg, transparent, rgba(0,229,160,0.22), transparent);
+}
+.stat.featured:hover { border-color: rgba(0,229,160,0.26); }
+
 .stat-label {
   font-family: 'DM Mono', monospace;
-  font-size: 9px;
+  font-size: 9.5px;
   color: var(--muted);
   text-transform: uppercase;
-  letter-spacing: .1em;
-  margin-bottom: 10px;
+  letter-spacing: .13em;
+  margin-bottom: 13px;
 }
+
 .stat-value {
-  font-size: 30px;
+  font-size: 36px;
   font-weight: 800;
   color: var(--text);
-  letter-spacing: -.03em;
+  letter-spacing: -.04em;
   line-height: 1;
 }
-.stat-value.green { color: var(--green); }
+.stat-value.green {
+  background: linear-gradient(120deg, #00E5A0 10%, #00C4FF 90%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
 .stat-sub {
   font-family: 'DM Mono', monospace;
   font-size: 10px;
-  color: var(--muted);
-  margin-top: 6px;
+  color: var(--dim);
+  margin-top: 9px;
+  opacity: .65;
 }
 
-/* PALIER */
+/* ── CARD ──────────────────────────────────── */
 .card {
   background: var(--surface);
   border: 0.5px solid var(--border);
-  border-radius: 12px;
+  border-radius: 14px;
   padding: 22px 24px;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
 }
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 28px; right: 28px; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.07), transparent);
+}
+
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 22px;
 }
 .card-title {
   font-family: 'DM Mono', monospace;
   font-size: 10px;
   color: var(--muted);
   text-transform: uppercase;
-  letter-spacing: .1em;
+  letter-spacing: .13em;
 }
 .badge {
   font-family: 'DM Mono', monospace;
   font-size: 10px;
-  padding: 4px 12px;
+  padding: 5px 14px;
   border-radius: 20px;
-  border: 0.5px solid rgba(0,229,160,0.4);
+  border: 0.5px solid rgba(0,229,160,0.32);
   color: var(--green);
-  background: rgba(0,229,160,0.06);
+  background: rgba(0,229,160,0.07);
+  letter-spacing: .07em;
 }
-.track-wrap { margin-bottom: 14px; }
+
+/* ── PROGRESS ──────────────────────────────── */
+.track-wrap { margin-bottom: 16px; }
 .track-labels {
   display: flex;
   justify-content: space-between;
   font-family: 'DM Mono', monospace;
   font-size: 10px;
-  color: var(--muted);
-  margin-bottom: 8px;
+  margin-bottom: 11px;
 }
+.tl-left { color: var(--text); opacity: .7; }
+.tl-right { color: var(--muted); }
+
 .track {
-  background: rgba(255,255,255,0.05);
-  border-radius: 3px;
-  height: 6px;
-  overflow: hidden;
+  background: rgba(255,255,255,0.04);
+  border-radius: 5px;
+  height: 8px;
   position: relative;
+  overflow: visible;
 }
 .track-fill {
   height: 100%;
-  border-radius: 3px;
-  background: linear-gradient(90deg, var(--green), #00C4FF);
-  transition: width 1.6s cubic-bezier(.4,0,.2,1);
+  border-radius: 5px;
+  background: linear-gradient(90deg, var(--green), var(--cyan));
+  transition: width 1.8s cubic-bezier(.25,.46,.45,.94);
   position: relative;
+  box-shadow: 0 0 14px rgba(0,229,160,0.28);
 }
 .track-fill::after {
   content: '';
   position: absolute;
-  right: 0; top: -2px;
-  width: 10px; height: 10px;
+  right: -6px; top: 50%;
+  transform: translateY(-50%);
+  width: 15px; height: 15px;
   border-radius: 50%;
-  background: #00C4FF;
-  box-shadow: 0 0 8px #00C4FF;
+  background: var(--cyan);
+  border: 2.5px solid var(--bg);
+  box-shadow: 0 0 10px rgba(0,196,255,.6), 0 0 22px rgba(0,196,255,.25);
 }
+
+/* ── STEPS ─────────────────────────────────── */
 .steps {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 6px;
-  margin-top: 16px;
+  gap: 7px;
+  margin-top: 20px;
 }
 .step {
   text-align: center;
-  padding: 10px 6px;
-  border-radius: 8px;
+  padding: 13px 6px 11px;
+  border-radius: 10px;
   border: 0.5px solid var(--border);
   font-family: 'DM Mono', monospace;
   font-size: 9px;
   color: var(--muted);
-  line-height: 1.6;
-  transition: all .2s;
+  line-height: 1.7;
+  transition: all .25s;
+  opacity: .45;
+}
+.step.done {
+  border-color: rgba(0,229,160,0.12);
+  color: rgba(0,229,160,0.45);
+  opacity: .6;
 }
 .step.active {
-  border-color: var(--green);
+  border-color: rgba(0,229,160,0.38);
   background: rgba(0,229,160,0.07);
   color: var(--green);
+  opacity: 1;
+  box-shadow: 0 0 18px rgba(0,229,160,0.06) inset, 0 0 1px rgba(0,229,160,.4);
 }
-.step .step-num { font-size: 13px; font-weight: 700; display: block; }
-.next-up {
-  margin-top: 14px;
-  padding: 12px 16px;
-  background: rgba(201,168,76,0.06);
-  border: 0.5px solid rgba(201,168,76,0.2);
-  border-radius: 8px;
-  font-family: 'DM Mono', monospace;
-  font-size: 10px;
-  color: var(--gold);
-  line-height: 1.7;
-}
+.step-num { font-size: 15px; font-weight: 700; display: block; margin-bottom: 1px; }
 
-/* CHART */
-.chart-container { position: relative; height: 260px; }
+/* ── NEXT UP ────────────────────────────────── */
+.next-up {
+  margin-top: 16px;
+  padding: 13px 18px;
+  background: rgba(201,168,76,0.05);
+  border: 0.5px solid rgba(201,168,76,0.16);
+  border-radius: 10px;
+  font-family: 'DM Mono', monospace;
+  font-size: 10.5px;
+  color: rgba(201,168,76,0.8);
+  line-height: 1.8;
+}
+.next-up strong { color: var(--text); }
+.next-up .highlight { color: var(--green); font-weight: 500; }
+
+/* ── CHART ─────────────────────────────────── */
+.chart-container { position: relative; height: 230px; }
 .loading {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 260px;
-  gap: 12px;
+  height: 230px;
+  gap: 14px;
 }
 .spinner {
-  width: 28px; height: 28px;
-  border: 2px solid rgba(255,255,255,0.06);
+  width: 26px; height: 26px;
+  border: 2px solid rgba(255,255,255,0.05);
   border-top-color: var(--green);
   border-radius: 50%;
   animation: spin .8s linear infinite;
@@ -237,56 +338,64 @@ body::before {
   font-family: 'DM Mono', monospace;
   font-size: 10px;
   color: var(--muted);
-  letter-spacing: .08em;
+  letter-spacing: .12em;
 }
 .error-msg {
   font-family: 'DM Mono', monospace;
   font-size: 11px;
   color: var(--danger);
   text-align: center;
-  padding: 20px;
+  padding: 24px 16px;
+  line-height: 1.9;
 }
 .empty-chart {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 260px;
+  height: 230px;
   font-family: 'DM Mono', monospace;
   font-size: 11px;
   color: var(--muted);
+  gap: 8px;
 }
 </style>
 </head>
 <body>
 
+<div class="glow-tl"></div>
+<div class="glow-br"></div>
+
+<!-- ── Header ─────────────────────────────── -->
 <div class="header">
-  <div class="header-left">
+  <div>
     <div class="eyebrow">AlphaWise · Apports d'affaires</div>
-    <h1>Dashboard <span>Hugo</span></h1>
+    <h1><span class="label">Dashboard</span><span class="name">Hugo</span></h1>
   </div>
   <button class="sync-btn" onclick="loadData()">
     <span class="sync-dot"></span> SYNC NOTION
   </button>
 </div>
 
+<!-- ── KPIs ───────────────────────────────── -->
 <div class="stats">
-  <div class="stat">
-    <div class="stat-label">Commission totale</div>
+  <div class="stat featured">
+    <div class="stat-label">Commissions gagnées</div>
     <div class="stat-value green" id="total-comm">—</div>
     <div class="stat-sub" id="comm-sub">chargement...</div>
   </div>
   <div class="stat">
-    <div class="stat-label">Clients apportés</div>
+    <div class="stat-label">Clients signés</div>
     <div class="stat-value" id="total-clients">—</div>
     <div class="stat-sub" id="clients-sub">chargement...</div>
   </div>
   <div class="stat">
-    <div class="stat-label">Capital total géré</div>
-    <div class="stat-value" id="total-capital">—</div>
-    <div class="stat-sub" id="capital-sub">chargement...</div>
+    <div class="stat-label">Taux actuel</div>
+    <div class="stat-value" id="taux-actuel">—</div>
+    <div class="stat-sub" id="taux-sub">chargement...</div>
   </div>
 </div>
 
+<!-- ── Palier ─────────────────────────────── -->
 <div class="card">
   <div class="card-header">
     <div class="card-title">Progression palier</div>
@@ -294,13 +403,15 @@ body::before {
   </div>
   <div class="track-wrap">
     <div class="track-labels">
-      <span id="track-left">0 client signé</span>
-      <span id="track-right">10 pour P2</span>
+      <span class="tl-left" id="track-left">0 client signé</span>
+      <span class="tl-right" id="track-right">10 pour P2</span>
     </div>
-    <div class="track"><div class="track-fill" id="track-fill" style="width:0%"></div></div>
+    <div class="track">
+      <div class="track-fill" id="track-fill" style="width:0%"></div>
+    </div>
   </div>
   <div class="steps" id="steps-container">
-    <div class="step active"><span class="step-num">P1</span>= Vivium</div>
+    <div class="step active"><span class="step-num">P1</span>Vivium</div>
     <div class="step"><span class="step-num">P2</span>+20%</div>
     <div class="step"><span class="step-num">P3</span>+30%</div>
     <div class="step"><span class="step-num">P4</span>+40%</div>
@@ -309,6 +420,7 @@ body::before {
   <div class="next-up" id="next-up">Chargement des données Notion...</div>
 </div>
 
+<!-- ── Graphique ──────────────────────────── -->
 <div class="card">
   <div class="card-header">
     <div class="card-title">Commission cumulée dans le temps</div>
@@ -325,11 +437,10 @@ body::before {
 <script>
 let chartInstance = null;
 
-// Palier : P1=1-10, P2=11-20, P3=21-30, P4=31-50, P5=50+
-// thresholds[i] = dernier client du palier i (P1→10, P2→20, P3→30, P4→50)
 const palierMaxClients = [10, 20, 30, 50];
 const palierBonus      = [1, 1.2, 1.3, 1.4, 1.5];
-const BASE_COMM_10K    = 390; // commission Vivium P1 pour 10 000 € > 5 ans
+const palierLabels     = ['Vivium', '+20 %', '+30 %', '+40 %', '+50 %'];
+const BASE_COMM_10K    = 390;
 
 function fmt(n) {
   return new Intl.NumberFormat('fr-FR', {
@@ -337,7 +448,6 @@ function fmt(n) {
   }).format(n);
 }
 
-// Retourne l'index du palier (0=P1 … 4=P5) pour n clients signés
 function getPalier(n) {
   if (n <= 10) return 0;
   if (n <= 20) return 1;
@@ -346,18 +456,19 @@ function getPalier(n) {
   return 4;
 }
 
-// Lecture sécurisée d'un champ formule Notion (type "number" ou null)
 function formulaNum(prop) {
   const v = prop?.formula?.number;
   return typeof v === 'number' ? v : 0;
 }
 
 async function loadData() {
-  // Réinitialise l'UI
   document.getElementById('chart-loading').style.display = 'flex';
   document.getElementById('chart-wrap').style.display = 'none';
-  ['total-comm','total-clients','total-capital'].forEach(id => {
+  ['total-comm', 'total-clients', 'taux-actuel'].forEach(id => {
     document.getElementById(id).textContent = '—';
+  });
+  ['comm-sub', 'clients-sub', 'taux-sub'].forEach(id => {
+    document.getElementById(id).textContent = 'chargement...';
   });
 
   try {
@@ -366,17 +477,14 @@ async function loadData() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({})
     });
-
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error((err.error || err.message || `HTTP ${res.status}`));
+      throw new Error(err.message || err.error || `HTTP ${res.status}`);
     }
-
     const data = await res.json();
     if (!Array.isArray(data.results)) {
-      throw new Error(data.error || data.message || 'Réponse inattendue de l\'API');
+      throw new Error(data.error || data.message || 'Réponse inattendue');
     }
-
     renderDashboard(data.results);
   } catch (err) {
     document.getElementById('chart-loading').innerHTML =
@@ -385,80 +493,79 @@ async function loadData() {
 }
 
 function renderDashboard(pages) {
-  // ── Segmentation par statut ──────────────────────────────────────────────
+  // ── Segmentation ──────────────────────────────────────────────────────────
   const signes  = pages.filter(p => p.properties['Statut']?.select?.name === 'Signé');
   const enCours = pages.filter(p => p.properties['Statut']?.select?.name === 'En cours');
   const perdus  = pages.filter(p => p.properties['Statut']?.select?.name === 'Perdu');
 
-  const nbSignes  = signes.length;
-  const nbActifs  = signes.length + enCours.length; // tous ceux qui ne sont pas perdus
+  const nbSignes = signes.length;
 
-  // ── KPIs : commission et capital sur clients SIGNÉS uniquement ───────────
+  // ── KPIs ──────────────────────────────────────────────────────────────────
   const totalComm = signes.reduce((s, p) =>
     s + formulaNum(p.properties['Commission due (€)']), 0);
 
-  const totalCapital = signes.reduce((s, p) => {
-    const v = p.properties['Capital investi (€)']?.number;
-    return s + (typeof v === 'number' ? v : 0);
-  }, 0);
+  // ── Palier ────────────────────────────────────────────────────────────────
+  const palierIdx = getPalier(nbSignes);
+  const prevMax   = palierIdx > 0 ? palierMaxClients[palierIdx - 1] : 0;
+  const nextMax   = palierIdx < 4 ? palierMaxClients[palierIdx] : 50;
+  const range     = nextMax - prevMax;
+  const progress  = range > 0 ? Math.min((nbSignes - prevMax) / range * 100, 100) : 100;
+  const remaining = palierIdx < 4 ? nextMax + 1 - nbSignes : 0;
+  const currentRate = Math.round(BASE_COMM_10K * palierBonus[palierIdx]);
 
-  // ── Affichage stats ──────────────────────────────────────────────────────
-  document.getElementById('total-comm').textContent    = fmt(totalComm);
-  document.getElementById('comm-sub').textContent      =
-    `${nbSignes} client${nbSignes !== 1 ? 's' : ''} signé${nbSignes !== 1 ? 's' : ''}`;
+  // ── Affichage KPIs ────────────────────────────────────────────────────────
+  document.getElementById('total-comm').textContent = fmt(totalComm);
+  document.getElementById('comm-sub').textContent =
+    nbSignes
+      ? `${nbSignes} dossier${nbSignes > 1 ? 's' : ''} signé${nbSignes > 1 ? 's' : ''}`
+      : 'aucun dossier signé';
 
-  document.getElementById('total-clients').textContent = nbActifs;
+  document.getElementById('total-clients').textContent = nbSignes;
   const subParts = [];
   if (enCours.length) subParts.push(`${enCours.length} en cours`);
-  if (perdus.length)  subParts.push(`${perdus.length} perdu${perdus.length !== 1 ? 's' : ''}`);
-  document.getElementById('clients-sub').textContent   =
+  if (perdus.length)  subParts.push(`${perdus.length} perdu${perdus.length > 1 ? 's' : ''}`);
+  document.getElementById('clients-sub').textContent =
     subParts.length ? subParts.join(' · ') : 'aucun dossier en cours';
 
-  document.getElementById('total-capital').textContent = fmt(totalCapital);
-  document.getElementById('capital-sub').textContent   = 'capital signé via AlphaWise';
+  document.getElementById('taux-actuel').textContent = fmt(currentRate);
+  document.getElementById('taux-sub').textContent =
+    `par tranche 10 000 € · Palier ${palierIdx + 1}`;
 
-  // ── Palier (basé sur clients SIGNÉS) ────────────────────────────────────
-  const palierIdx      = getPalier(nbSignes);
-  const prevMax        = palierIdx > 0 ? palierMaxClients[palierIdx - 1] : 0;
-  const nextMax        = palierIdx < 4 ? palierMaxClients[palierIdx]     : 50;
-  const range          = nextMax - prevMax;
-  const progress       = range > 0
-    ? Math.min((nbSignes - prevMax) / range * 100, 100)
-    : 100;
-
+  // ── Barre de progression ──────────────────────────────────────────────────
   document.getElementById('palier-badge').textContent = `Palier ${palierIdx + 1}`;
-  document.getElementById('track-left').textContent   =
-    `${nbSignes} client${nbSignes !== 1 ? 's' : ''} signé${nbSignes !== 1 ? 's' : ''}`;
-
-  const remaining = palierIdx < 4 ? nextMax + 1 - nbSignes : 0;
-  document.getElementById('track-right').textContent  = palierIdx < 4
+  document.getElementById('track-left').textContent =
+    `${nbSignes} client${nbSignes > 1 ? 's' : ''} signé${nbSignes > 1 ? 's' : ''}`;
+  document.getElementById('track-right').textContent = palierIdx < 4
     ? `${remaining} pour P${palierIdx + 2}`
     : 'Palier max atteint 🎯';
 
   setTimeout(() => {
     document.getElementById('track-fill').style.width = progress + '%';
-  }, 100);
+  }, 120);
 
-  // Steps highlight
-  document.querySelectorAll('.step').forEach((s, i) => {
-    s.classList.toggle('active', i === palierIdx);
-    s.style.opacity = i <= palierIdx ? '1' : '0.4';
+  // ── Steps ─────────────────────────────────────────────────────────────────
+  document.querySelectorAll('.step').forEach((el, i) => {
+    el.classList.remove('active', 'done');
+    if (i === palierIdx)  el.classList.add('active');
+    else if (i < palierIdx) el.classList.add('done');
   });
 
-  // Message "prochain palier"
+  // ── Message prochaine étape ───────────────────────────────────────────────
+  const nextUpEl = document.getElementById('next-up');
   if (palierIdx < 4) {
-    const gain = Math.round(BASE_COMM_10K * (palierBonus[palierIdx + 1] - palierBonus[palierIdx]));
-    document.getElementById('next-up').innerHTML =
-      `Encore <strong style="color:var(--text)">${remaining} client${remaining !== 1 ? 's' : ''}</strong>`
-      + ` pour passer au palier ${palierIdx + 2}`
-      + ` — +${gain} € de commission par tranche de 10 000 € investis (horizon > 5 ans)`;
+    const nextRate = Math.round(BASE_COMM_10K * palierBonus[palierIdx + 1]);
+    const delta    = nextRate - currentRate;
+    nextUpEl.innerHTML =
+      `Encore <strong>${remaining} client${remaining > 1 ? 's' : ''}</strong> pour `
+      + `passer en <strong>Palier ${palierIdx + 2}</strong> — `
+      + `<span class="highlight">+${fmt(delta)}</span> par tranche de 10 000 € investis`;
   } else {
-    document.getElementById('next-up').innerHTML =
-      `<strong style="color:var(--green)">Palier maximum atteint.</strong>`
-      + ` Commission à +50 % vs Vivium sur chaque nouveau client.`;
+    nextUpEl.innerHTML =
+      `<strong>Palier maximum atteint.</strong> `
+      + `Commission <span class="highlight">+50 %</span> vs Vivium sur chaque nouveau client.`;
   }
 
-  // ── Graphique : commission cumulée dans le temps (signés uniquement) ────
+  // ── Graphique ─────────────────────────────────────────────────────────────
   const byMonth = {};
   signes.forEach(p => {
     const dateStr = p.properties['Date']?.date?.start;
@@ -470,18 +577,18 @@ function renderDashboard(pages) {
   });
 
   document.getElementById('chart-loading').style.display = 'none';
-  document.getElementById('chart-wrap').style.display    = 'block';
+  document.getElementById('chart-wrap').style.display = 'block';
 
   const sortedMonths = Object.keys(byMonth).sort();
 
   if (sortedMonths.length === 0) {
     document.getElementById('chart-wrap').innerHTML =
-      '<div class="empty-chart">Aucune commission enregistrée pour l\'instant</div>';
+      '<div class="empty-chart"><span style="opacity:.3">◦</span> Aucune commission enregistrée pour l\'instant</div>';
     return;
   }
 
   let cumul = 0;
-  const cumulData = sortedMonths.map(m => { cumul += byMonth[m]; return cumul; });
+  const cumulData  = sortedMonths.map(m => { cumul += byMonth[m]; return cumul; });
   const labels = sortedMonths.map(m => {
     const [y, mo] = m.split('-');
     return new Date(+y, +mo - 1).toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' });
@@ -490,9 +597,10 @@ function renderDashboard(pages) {
   if (chartInstance) chartInstance.destroy();
   const ctx = document.getElementById('commChart').getContext('2d');
 
-  const gradient = ctx.createLinearGradient(0, 0, 0, 260);
-  gradient.addColorStop(0, 'rgba(0,229,160,0.18)');
-  gradient.addColorStop(1, 'rgba(0,229,160,0)');
+  const grad = ctx.createLinearGradient(0, 0, 0, 230);
+  grad.addColorStop(0,   'rgba(0,229,160,0.16)');
+  grad.addColorStop(0.6, 'rgba(0,196,255,0.05)');
+  grad.addColorStop(1,   'rgba(0,229,160,0)');
 
   chartInstance = new Chart(ctx, {
     type: 'line',
@@ -501,15 +609,17 @@ function renderDashboard(pages) {
       datasets: [{
         data: cumulData,
         borderColor: '#00E5A0',
-        borderWidth: 2,
-        backgroundColor: gradient,
+        borderWidth: 1.8,
+        backgroundColor: grad,
         fill: true,
-        tension: 0.4,
+        tension: 0.42,
         pointBackgroundColor: '#00E5A0',
-        pointBorderColor: '#080A0F',
+        pointBorderColor: '#060810',
         pointBorderWidth: 2,
         pointRadius: 5,
-        pointHoverRadius: 7
+        pointHoverRadius: 7,
+        pointHoverBorderColor: '#00C4FF',
+        pointHoverBackgroundColor: '#00C4FF'
       }]
     },
     options: {
@@ -518,34 +628,35 @@ function renderDashboard(pages) {
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: '#0E1118',
-          borderColor: 'rgba(0,229,160,0.3)',
+          backgroundColor: '#0F1220',
+          borderColor: 'rgba(0,229,160,0.22)',
           borderWidth: 1,
-          titleColor: '#5A5F6E',
+          titleColor: '#3E4557',
           bodyColor: '#00E5A0',
           titleFont: { family: 'DM Mono', size: 10 },
-          bodyFont: { family: 'DM Mono', size: 13, weight: '500' },
-          padding: 12,
+          bodyFont:  { family: 'DM Mono', size: 13, weight: '500' },
+          padding: 13,
+          cornerRadius: 8,
           callbacks: {
             title: items => items[0].label,
-            label: item => fmt(item.parsed.y) + ' cumulés'
+            label: item  => fmt(item.parsed.y) + ' cumulés'
           }
         }
       },
       scales: {
         x: {
-          ticks: { color: '#5A5F6E', font: { family: 'DM Mono', size: 10 } },
-          grid: { color: 'rgba(255,255,255,0.03)' },
-          border: { color: 'rgba(255,255,255,0.04)' }
+          ticks: { color: '#3E4557', font: { family: 'DM Mono', size: 10 } },
+          grid:  { color: 'rgba(255,255,255,0.025)' },
+          border: { color: 'rgba(255,255,255,0.035)' }
         },
         y: {
           ticks: {
-            color: '#5A5F6E',
+            color: '#3E4557',
             font: { family: 'DM Mono', size: 10 },
             callback: v => fmt(v)
           },
-          grid: { color: 'rgba(255,255,255,0.03)' },
-          border: { color: 'rgba(255,255,255,0.04)' }
+          grid:  { color: 'rgba(255,255,255,0.025)' },
+          border: { color: 'rgba(255,255,255,0.035)' }
         }
       }
     }
