@@ -301,20 +301,66 @@ h1 .name {
 }
 .step-num { font-size: 15px; font-weight: 700; display: block; margin-bottom: 1px; }
 
-/* ── NEXT UP ────────────────────────────────── */
-.next-up {
-  margin-top: 16px;
-  padding: 13px 18px;
-  background: rgba(201,168,76,0.05);
-  border: 0.5px solid rgba(201,168,76,0.16);
-  border-radius: 10px;
-  font-family: 'DM Mono', monospace;
-  font-size: 10.5px;
-  color: rgba(201,168,76,0.8);
-  line-height: 1.8;
+/* ── COUNTDOWN ─────────────────────────────── */
+.countdown-wrap {
+  margin-top: 18px;
+  text-align: center;
+  padding: 24px 20px 20px;
+  background: rgba(0,229,160,0.035);
+  border: 0.5px solid rgba(0,229,160,0.12);
+  border-radius: 12px;
 }
-.next-up strong { color: var(--text); }
-.next-up .highlight { color: var(--green); font-weight: 500; }
+.countdown-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .22em;
+  margin-bottom: 4px;
+}
+.countdown-number {
+  font-size: 76px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -.06em;
+  background: linear-gradient(120deg, #00E5A0 15%, #00C4FF 85%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 0 24px rgba(0,229,160,0.25));
+}
+.countdown-sub {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  color: var(--dim);
+  margin-top: 6px;
+  letter-spacing: .04em;
+}
+.countdown-gain {
+  display: inline-block;
+  margin-top: 13px;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--gold);
+  padding: 6px 16px;
+  background: rgba(201,168,76,0.07);
+  border: 0.5px solid rgba(201,168,76,0.22);
+  border-radius: 20px;
+}
+.countdown-max {
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  color: var(--green);
+  padding: 10px;
+}
+
+/* ── PROJECTION ────────────────────────────── */
+.stat-value.gold {
+  background: linear-gradient(120deg, #C9A84C 0%, #E8C96B 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
 
 /* ── CHART ─────────────────────────────────── */
 .chart-container { position: relative; height: 230px; }
@@ -389,9 +435,9 @@ h1 .name {
     <div class="stat-sub" id="clients-sub">chargement...</div>
   </div>
   <div class="stat">
-    <div class="stat-label">Taux actuel</div>
-    <div class="stat-value" id="taux-actuel">—</div>
-    <div class="stat-sub" id="taux-sub">chargement...</div>
+    <div class="stat-label">Projection 2026</div>
+    <div class="stat-value gold" id="proj-annuelle">—</div>
+    <div class="stat-sub" id="proj-sub">chargement...</div>
   </div>
 </div>
 
@@ -417,7 +463,12 @@ h1 .name {
     <div class="step"><span class="step-num">P4</span>+40%</div>
     <div class="step"><span class="step-num">P5</span>+50%</div>
   </div>
-  <div class="next-up" id="next-up">Chargement des données Notion...</div>
+  <div class="countdown-wrap" id="countdown-wrap">
+    <div class="countdown-label">encore</div>
+    <div class="countdown-number" id="countdown-num">—</div>
+    <div class="countdown-sub" id="countdown-sub">clients pour débloquer P2</div>
+    <div class="countdown-gain" id="countdown-gain">chargement...</div>
+  </div>
 </div>
 
 <!-- ── Graphique ──────────────────────────── -->
@@ -464,10 +515,10 @@ function formulaNum(prop) {
 async function loadData() {
   document.getElementById('chart-loading').style.display = 'flex';
   document.getElementById('chart-wrap').style.display = 'none';
-  ['total-comm', 'total-clients', 'taux-actuel'].forEach(id => {
+  ['total-comm', 'total-clients', 'proj-annuelle'].forEach(id => {
     document.getElementById(id).textContent = '—';
   });
-  ['comm-sub', 'clients-sub', 'taux-sub'].forEach(id => {
+  ['comm-sub', 'clients-sub', 'proj-sub'].forEach(id => {
     document.getElementById(id).textContent = 'chargement...';
   });
 
@@ -527,9 +578,18 @@ function renderDashboard(pages) {
   document.getElementById('clients-sub').textContent =
     subParts.length ? subParts.join(' · ') : 'aucun dossier en cours';
 
-  document.getElementById('taux-actuel').textContent = fmt(currentRate);
-  document.getElementById('taux-sub').textContent =
-    `par tranche 10 000 € · Palier ${palierIdx + 1}`;
+  // ── Projection annuelle ─────────────────────────────────────────────────
+  const now = new Date();
+  const startOfYear = new Date(now.getFullYear(), 0, 1);
+  const daysElapsed = Math.max((now - startOfYear) / 86400000, 1);
+  const monthsElapsed = daysElapsed / 30.44;
+  const projAnnual = totalComm > 0
+    ? Math.round((totalComm / monthsElapsed) * 12)
+    : 0;
+  document.getElementById('proj-annuelle').textContent = projAnnual > 0 ? fmt(projAnnual) : '—';
+  document.getElementById('proj-sub').textContent = projAnnual > 0
+    ? `à ce rythme d'ici déc. ${now.getFullYear()}`
+    : 'pas encore de données';
 
   // ── Barre de progression ──────────────────────────────────────────────────
   document.getElementById('palier-badge').textContent = `Palier ${palierIdx + 1}`;
@@ -550,19 +610,19 @@ function renderDashboard(pages) {
     else if (i < palierIdx) el.classList.add('done');
   });
 
-  // ── Message prochaine étape ───────────────────────────────────────────────
-  const nextUpEl = document.getElementById('next-up');
+  // ── Countdown palier ─────────────────────────────────────────────────────
+  const countdownWrap = document.getElementById('countdown-wrap');
   if (palierIdx < 4) {
     const nextRate = Math.round(BASE_COMM_10K * palierBonus[palierIdx + 1]);
     const delta    = nextRate - currentRate;
-    nextUpEl.innerHTML =
-      `Encore <strong>${remaining} client${remaining > 1 ? 's' : ''}</strong> pour `
-      + `passer en <strong>Palier ${palierIdx + 2}</strong> — `
-      + `<span class="highlight">+${fmt(delta)}</span> par tranche de 10 000 € investis`;
+    document.getElementById('countdown-num').textContent  = remaining;
+    document.getElementById('countdown-sub').textContent  =
+      `client${remaining > 1 ? 's' : ''} pour débloquer P${palierIdx + 2}`;
+    document.getElementById('countdown-gain').textContent =
+      `+${fmt(delta)} par client supplémentaire`;
   } else {
-    nextUpEl.innerHTML =
-      `<strong>Palier maximum atteint.</strong> `
-      + `Commission <span class="highlight">+50 %</span> vs Vivium sur chaque nouveau client.`;
+    countdownWrap.innerHTML =
+      '<div class="countdown-max">Palier maximum atteint — +50 % vs Vivium</div>';
   }
 
   // ── Graphique ─────────────────────────────────────────────────────────────
