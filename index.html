@@ -474,7 +474,7 @@ h1 .name {
 <!-- ── Graphique ──────────────────────────── -->
 <div class="card">
   <div class="card-header">
-    <div class="card-title">Commission cumulée dans le temps</div>
+    <div class="card-title">Commissions par mois</div>
   </div>
   <div id="chart-loading" class="loading">
     <div class="spinner"></div>
@@ -578,17 +578,17 @@ function renderDashboard(pages) {
   document.getElementById('clients-sub').textContent =
     subParts.length ? subParts.join(' · ') : 'aucun dossier en cours';
 
-  // ── Projection annuelle ─────────────────────────────────────────────────
+  // ── Projection annuelle (depuis début collab mai 2026) ──────────────────
   const now = new Date();
-  const startOfYear = new Date(now.getFullYear(), 0, 1);
-  const daysElapsed = Math.max((now - startOfYear) / 86400000, 1);
-  const monthsElapsed = daysElapsed / 30.44;
+  const collabStart = new Date(2026, 4, 1); // 1er mai 2026
+  const daysElapsed = Math.max((now - collabStart) / 86400000, 1);
+  const monthsElapsed = Math.max(daysElapsed / 30.44, 0.5);
   const projAnnual = totalComm > 0
     ? Math.round((totalComm / monthsElapsed) * 12)
     : 0;
   document.getElementById('proj-annuelle').textContent = projAnnual > 0 ? fmt(projAnnual) : '—';
   document.getElementById('proj-sub').textContent = projAnnual > 0
-    ? `à ce rythme d'ici déc. ${now.getFullYear()}`
+    ? 'annualisé · depuis mai 2026'
     : 'pas encore de données';
 
   // ── Barre de progression ──────────────────────────────────────────────────
@@ -625,7 +625,7 @@ function renderDashboard(pages) {
       '<div class="countdown-max">Palier maximum atteint — +50 % vs Vivium</div>';
   }
 
-  // ── Graphique ─────────────────────────────────────────────────────────────
+  // ── Graphique : commissions par mois ─────────────────────────────────────
   const byMonth = {};
   signes.forEach(p => {
     const dateStr = p.properties['Date']?.date?.start;
@@ -647,8 +647,7 @@ function renderDashboard(pages) {
     return;
   }
 
-  let cumul = 0;
-  const cumulData  = sortedMonths.map(m => { cumul += byMonth[m]; return cumul; });
+  const monthlyData = sortedMonths.map(m => byMonth[m]);
   const labels = sortedMonths.map(m => {
     const [y, mo] = m.split('-');
     return new Date(+y, +mo - 1).toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' });
@@ -657,29 +656,19 @@ function renderDashboard(pages) {
   if (chartInstance) chartInstance.destroy();
   const ctx = document.getElementById('commChart').getContext('2d');
 
-  const grad = ctx.createLinearGradient(0, 0, 0, 180);
-  grad.addColorStop(0,   'rgba(0,229,160,0.16)');
-  grad.addColorStop(0.6, 'rgba(0,196,255,0.05)');
-  grad.addColorStop(1,   'rgba(0,229,160,0)');
-
   chartInstance = new Chart(ctx, {
-    type: 'line',
+    type: 'bar',
     data: {
       labels,
       datasets: [{
-        data: cumulData,
+        data: monthlyData,
+        backgroundColor: 'rgba(0,229,160,0.12)',
         borderColor: '#00E5A0',
-        borderWidth: 1.8,
-        backgroundColor: grad,
-        fill: true,
-        tension: 0.42,
-        pointBackgroundColor: '#00E5A0',
-        pointBorderColor: '#060810',
-        pointBorderWidth: 2,
-        pointRadius: 5,
-        pointHoverRadius: 7,
-        pointHoverBorderColor: '#00C4FF',
-        pointHoverBackgroundColor: '#00C4FF'
+        borderWidth: 1.5,
+        borderRadius: 6,
+        borderSkipped: false,
+        hoverBackgroundColor: 'rgba(0,229,160,0.22)',
+        hoverBorderColor: '#00C4FF'
       }]
     },
     options: {
@@ -699,14 +688,14 @@ function renderDashboard(pages) {
           cornerRadius: 8,
           callbacks: {
             title: items => items[0].label,
-            label: item  => fmt(item.parsed.y) + ' cumulés'
+            label: item  => fmt(item.parsed.y)
           }
         }
       },
       scales: {
         x: {
           ticks: { color: '#3E4557', font: { family: 'DM Mono', size: 10 } },
-          grid:  { color: 'rgba(255,255,255,0.025)' },
+          grid:  { display: false },
           border: { color: 'rgba(255,255,255,0.035)' }
         },
         y: {
@@ -716,7 +705,8 @@ function renderDashboard(pages) {
             callback: v => fmt(v)
           },
           grid:  { color: 'rgba(255,255,255,0.025)' },
-          border: { color: 'rgba(255,255,255,0.035)' }
+          border: { color: 'rgba(255,255,255,0.035)' },
+          beginAtZero: true
         }
       }
     }
