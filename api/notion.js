@@ -1,7 +1,7 @@
 export const config = { api: { bodyParser: true } };
 
 // Database ID de "Tracking Apports d'affaires"
-const DB_ID = '58ad64f9-3805-4777-b927-2474606df624';
+const DB_ID = 'f3a44edf-8893-4b60-bb5a-6ff3665883df';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
