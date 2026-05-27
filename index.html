@@ -347,6 +347,7 @@ async function loadData() {
 
     if (!res.ok) throw new Error('Erreur API Notion: ' + res.status);
     const data = await res.json();
+    if (!data.results) throw new Error('Notion: ' + (data.message || data.code || JSON.stringify(data)));
     renderDashboard(data.results);
   } catch (err) {
     document.getElementById('chart-loading').innerHTML = `<div class="error-msg">⚠ Impossible de charger les données Notion.<br><small>${err.message}</small></div>`;
