@@ -6,6 +6,7 @@
 <title>Dashboard Hugo · AlphaWise</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=Inter:wght@600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <style>
 :root {
   --bg:       #060810;
@@ -321,6 +322,8 @@ h1 .name {
   margin-bottom: 4px;
 }
 .countdown-number {
+  font-family: 'Inter', sans-serif;
+  font-variant-numeric: tabular-nums;
   font-size: 48px;
   font-weight: 800;
   line-height: 1;
@@ -365,13 +368,13 @@ h1 .name {
 }
 
 /* ── CHART ─────────────────────────────────── */
-.chart-container { position: relative; height: 180px; }
+.chart-container { position: relative; height: 210px; }
 .loading {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 180px;
+  height: 210px;
   gap: 14px;
 }
 .spinner {
@@ -400,7 +403,7 @@ h1 .name {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 180px;
+  height: 210px;
   font-family: 'DM Mono', monospace;
   font-size: 11px;
   color: var(--muted);
@@ -658,24 +661,36 @@ function renderDashboard(pages) {
   if (chartInstance) chartInstance.destroy();
   const ctx = document.getElementById('commChart').getContext('2d');
 
+  // Gradient vertical par barre
+  const barGrad = ctx.createLinearGradient(0, 0, 0, 210);
+  barGrad.addColorStop(0,   'rgba(0,229,160,0.55)');
+  barGrad.addColorStop(1,   'rgba(0,229,160,0.06)');
+
+  const barGradHover = ctx.createLinearGradient(0, 0, 0, 210);
+  barGradHover.addColorStop(0,   'rgba(0,196,255,0.7)');
+  barGradHover.addColorStop(1,   'rgba(0,196,255,0.08)');
+
+  Chart.register(ChartDataLabels);
+
   chartInstance = new Chart(ctx, {
     type: 'bar',
     data: {
       labels,
       datasets: [{
         data: monthlyData,
-        backgroundColor: 'rgba(0,229,160,0.12)',
-        borderColor: '#00E5A0',
-        borderWidth: 1.5,
+        backgroundColor: barGrad,
+        borderColor: 'rgba(0,229,160,0.7)',
+        borderWidth: 1,
         borderRadius: 6,
         borderSkipped: false,
-        hoverBackgroundColor: 'rgba(0,229,160,0.22)',
+        hoverBackgroundColor: barGradHover,
         hoverBorderColor: '#00C4FF'
       }]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      layout: { padding: { top: 24 } },
       plugins: {
         legend: { display: false },
         tooltip: {
@@ -685,29 +700,31 @@ function renderDashboard(pages) {
           titleColor: '#3E4557',
           bodyColor: '#00E5A0',
           titleFont: { family: 'DM Mono', size: 10 },
-          bodyFont:  { family: 'DM Mono', size: 13, weight: '500' },
-          padding: 13,
+          bodyFont:  { family: 'Inter', size: 13, weight: '600' },
+          padding: 12,
           cornerRadius: 8,
           callbacks: {
             title: items => items[0].label,
-            label: item  => fmt(item.parsed.y)
+            label: item  => ' ' + fmt(item.parsed.y)
           }
+        },
+        datalabels: {
+          anchor: 'end',
+          align: 'top',
+          offset: 2,
+          color: '#00E5A0',
+          font: { family: 'Inter', size: 10, weight: '600' },
+          formatter: v => fmt(v)
         }
       },
       scales: {
         x: {
           ticks: { color: '#3E4557', font: { family: 'DM Mono', size: 10 } },
           grid:  { display: false },
-          border: { color: 'rgba(255,255,255,0.035)' }
+          border: { display: false }
         },
         y: {
-          ticks: {
-            color: '#3E4557',
-            font: { family: 'DM Mono', size: 10 },
-            callback: v => fmt(v)
-          },
-          grid:  { color: 'rgba(255,255,255,0.025)' },
-          border: { color: 'rgba(255,255,255,0.035)' },
+          display: false,
           beginAtZero: true
         }
       }
