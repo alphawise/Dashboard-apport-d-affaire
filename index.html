@@ -624,7 +624,7 @@ function renderDashboard(pages) {
     document.getElementById('countdown-sub').textContent  =
       `client${remaining > 1 ? 's' : ''} pour débloquer P${palierIdx + 2}`;
     document.getElementById('countdown-gain').textContent =
-      `+${fmt(delta)} par client supplémentaire`;
+      `+${fmt(delta)} par tranche de 10 000 € investis`;
   } else {
     countdownWrap.innerHTML =
       '<div class="countdown-max">Palier maximum atteint — +50 % vs Vivium</div>';
