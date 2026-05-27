@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AlphaWise × Hugo — Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: #0f1117; color: #e8e6df; padding: 24px; }
+  .header { font-size: 11px; color: #888780; letter-spacing: .06em; margin-bottom: 20px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .card { background: #1a1d26; border: 0.5px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 20px; }
+  .card-full { background: #1a1d26; border: 0.5px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+  .label { font-size: 11px; color: #888780; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+  .value { font-size: 28px; font-weight: 500; color: #e8e6df; }
+  .value-small { font-size: 13px; color: #888780; margin-top: 4px; }
+  .palier-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .palier-title { font-size: 14px; font-weight: 500; }
+  .palier-badge { background: #1D9E75; color: #E1F5EE; font-size: 11px; padding: 3px 10px; border-radius: 20px; }
+  .track { background: rgba(255,255,255,0.08); border-radius: 4px; height: 8px; margin-bottom: 10px; overflow: hidden; }
+  .fill { height: 100%; border-radius: 4px; background: #1D9E75; transition: width 1.4s cubic-bezier(.4,0,.2,1); }
+  .palier-row { display: flex; justify-content: space-between; font-size: 12px; color: #888780; margin-bottom: 14px; }
+  .palier-steps { display: flex; gap: 8px; }
+  .step { flex: 1; text-align: center; font-size: 11px; padding: 7px 4px; border-radius: 6px; border: 0.5px solid rgba(255,255,255,0.08); color: #888780; line-height: 1.5; }
+  .step.active { background: #1D9E75; border-color: #1D9E75; color: #E1F5EE; font-weight: 500; }
+  .step.done { background: rgba(29,158,117,0.15); border-color: rgba(29,158,117,0.3); color: #5DCAA5; }
+  .chart-wrap { position: relative; width: 100%; height: 240px; margin-top: 8px; }
+  .legend { display: flex; gap: 16px; margin-bottom: 12px; font-size: 12px; color: #888780; }
+  .legend span { display: flex; align-items: center; gap: 5px; }
+  .dot { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+  .next-palier { background: rgba(29,158,117,0.1); border: 0.5px solid rgba(29,158,117,0.3); border-radius: 8px; padding: 12px 16px; margin-top: 14px; font-size: 12px; color: #5DCAA5; }
+  .next-palier strong { color: #9FE1CB; }
+</style>
+</head>
+<body>
+
+<div class="header">ALPHAWISE × HUGO — DASHBOARD APPORTS D'AFFAIRES</div>
+
+<div class="grid">
+  <div class="card">
+    <div class="label">Commission totale</div>
+    <div class="value" id="total-comm">585 €</div>
+    <div class="value-small" id="comm-detail">2 clients · P1 · > 5 ans</div>
+  </div>
+  <div class="card">
+    <div class="label">Clients apportés</div>
+    <div class="value" id="total-clients">2</div>
+    <div class="value-small">sur 10 pour passer au palier 2</div>
+  </div>
+</div>
+
+<div class="card-full">
+  <div class="palier-header">
+    <div class="palier-title">Progression palier</div>
+    <div class="palier-badge" id="palier-label">Palier 1</div>
+  </div>
+  <div class="track"><div class="fill" id="fill-bar" style="width:0%"></div></div>
+  <div class="palier-row">
+    <span id="progress-text">2 / 10 clients</span>
+    <span id="next-text">encore 8 clients pour +20% de commission</span>
+  </div>
+  <div class="palier-steps">
+    <div class="step active">P1<br>= Vivium</div>
+    <div class="step">P2<br>+20%</div>
+    <div class="step">P3<br>+30%</div>
+    <div class="step">P4<br>+40%</div>
+    <div class="step">P5<br>+50%</div>
+  </div>
+  <div class="next-palier">
+    Au palier 2 (11 clients), ta commission sur 10 000 € passe de <strong>390 €</strong> à <strong>468 €</strong> — soit +78 € par client.
+  </div>
+</div>
+
+<div class="card-full">
+  <div class="label" style="margin-bottom:12px">Commission cumulée dans le temps</div>
+  <div class="legend">
+    <span><span class="dot" style="background:#1D9E75"></span>Horizon &gt; 5 ans</span>
+    <span><span class="dot" style="background:#EF9F27"></span>Horizon &lt; 5 ans</span>
+  </div>
+  <div class="chart-wrap">
+    <canvas id="commChart" role="img" aria-label="Commissions cumulées par mois">Mai 2026 : 390€. Juin 2026 : 195€.</canvas>
+  </div>
+</div>
+
+<script>
+  setTimeout(() => {
+    const clients = 2, target = 10;
+    document.getElementById('fill-bar').style.width = (clients / target * 100) + '%';
+  }, 200);
+
+  const ctx = document.getElementById('commChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Mai 2026', 'Juin 2026'],
+      datasets: [
+        {
+          label: '> 5 ans',
+          data: [390, 0],
+          backgroundColor: '#1D9E75',
+          borderRadius: 4,
+          barPercentage: 0.5
+        },
+        {
+          label: '< 5 ans',
+          data: [0, 195],
+          backgroundColor: '#EF9F27',
+          borderRadius: 4,
+          barPercentage: 0.5
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: { label: c => c.dataset.label + ' : ' + c.parsed.y + ' €' }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#888780', font: { size: 12 }, autoSkip: false },
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          border: { color: 'rgba(255,255,255,0.06)' }
+        },
+        y: {
+          ticks: { color: '#888780', font: { size: 12 }, callback: v => v + ' €' },
+          grid: { color: 'rgba(255,255,255,0.06)' },
+          border: { color: 'rgba(255,255,255,0.06)' }
+        }
+      }
+    }
+  });
+</script>
+</body>
+</html>
