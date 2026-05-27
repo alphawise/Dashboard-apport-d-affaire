@@ -16,6 +16,7 @@
   --text: #F0EDE6;
   --muted: #5A5F6E;
   --danger: #FF6B6B;
+  --orange: #FF9A3C;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
@@ -245,6 +246,15 @@ body::before {
   text-align: center;
   padding: 20px;
 }
+.empty-chart {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 260px;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+}
 </style>
 </head>
 <body>
@@ -284,7 +294,7 @@ body::before {
   </div>
   <div class="track-wrap">
     <div class="track-labels">
-      <span id="track-left">0 clients</span>
+      <span id="track-left">0 client signé</span>
       <span id="track-right">10 pour P2</span>
     </div>
     <div class="track"><div class="track-fill" id="track-fill" style="width:0%"></div></div>
@@ -313,19 +323,21 @@ body::before {
 </div>
 
 <script>
-const TOKEN = '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';
-const DB_ID = '58ad64f9-3805-4777-b927-2474606df624';
-const PROXY = 'https://notion-proxy.vercel.app/api/notion';
 let chartInstance = null;
 
-const palierThresholds = [0, 10, 20, 30, 50];
-const palierLabels = ['P1\n= Vivium', 'P2\n+20%', 'P3\n+30%', 'P4\n+40%', 'P5\n+50%'];
-const palierBonus = [1, 1.2, 1.3, 1.4, 1.5];
+// Palier : P1=1-10, P2=11-20, P3=21-30, P4=31-50, P5=50+
+// thresholds[i] = dernier client du palier i (P1→10, P2→20, P3→30, P4→50)
+const palierMaxClients = [10, 20, 30, 50];
+const palierBonus      = [1, 1.2, 1.3, 1.4, 1.5];
+const BASE_COMM_10K    = 390; // commission Vivium P1 pour 10 000 € > 5 ans
 
 function fmt(n) {
-  return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
+  return new Intl.NumberFormat('fr-FR', {
+    style: 'currency', currency: 'EUR', maximumFractionDigits: 0
+  }).format(n);
 }
 
+// Retourne l'index du palier (0=P1 … 4=P5) pour n clients signés
 function getPalier(n) {
   if (n <= 10) return 0;
   if (n <= 20) return 1;
@@ -334,94 +346,146 @@ function getPalier(n) {
   return 4;
 }
 
+// Lecture sécurisée d'un champ formule Notion (type "number" ou null)
+function formulaNum(prop) {
+  const v = prop?.formula?.number;
+  return typeof v === 'number' ? v : 0;
+}
+
 async function loadData() {
+  // Réinitialise l'UI
   document.getElementById('chart-loading').style.display = 'flex';
   document.getElementById('chart-wrap').style.display = 'none';
+  ['total-comm','total-clients','total-capital'].forEach(id => {
+    document.getElementById(id).textContent = '—';
+  });
 
   try {
     const res = await fetch('/api/notion', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ dbId: DB_ID })
+      body: JSON.stringify({})
     });
 
-    if (!res.ok) throw new Error('Erreur API Notion: ' + res.status);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error((err.error || err.message || `HTTP ${res.status}`));
+    }
+
     const data = await res.json();
-    if (!data.results) throw new Error('Notion: ' + (data.message || data.code || JSON.stringify(data)));
+    if (!Array.isArray(data.results)) {
+      throw new Error(data.error || data.message || 'Réponse inattendue de l\'API');
+    }
+
     renderDashboard(data.results);
   } catch (err) {
-    document.getElementById('chart-loading').innerHTML = `<div class="error-msg">⚠ Impossible de charger les données Notion.<br><small>${err.message}</small></div>`;
+    document.getElementById('chart-loading').innerHTML =
+      `<div class="error-msg">⚠ Impossible de charger les données Notion.<br><small>${err.message}</small></div>`;
   }
 }
 
 function renderDashboard(pages) {
-  const clients = pages.filter(p => {
-    const status = p.properties['Statut']?.select?.name;
-    return status === 'Signé' || status === 'En cours';
-  });
+  // ── Segmentation par statut ──────────────────────────────────────────────
+  const signes  = pages.filter(p => p.properties['Statut']?.select?.name === 'Signé');
+  const enCours = pages.filter(p => p.properties['Statut']?.select?.name === 'En cours');
+  const perdus  = pages.filter(p => p.properties['Statut']?.select?.name === 'Perdu');
 
-  const totalClients = clients.length;
-  const totalComm = clients.reduce((s, p) => s + (p.properties['Commission due (€)']?.formula?.number || 0), 0);
-  const totalCapital = clients.reduce((s, p) => s + (p.properties['Capital investi (€)']?.number || 0), 0);
-  const signes = clients.filter(p => p.properties['Statut']?.select?.name === 'Signé').length;
+  const nbSignes  = signes.length;
+  const nbActifs  = signes.length + enCours.length; // tous ceux qui ne sont pas perdus
 
-  // Stats
-  document.getElementById('total-comm').textContent = fmt(totalComm);
-  document.getElementById('comm-sub').textContent = `${signes} client${signes > 1 ? 's' : ''} signé${signes > 1 ? 's' : ''}`;
-  document.getElementById('total-clients').textContent = totalClients;
-  document.getElementById('clients-sub').textContent = `${clients.filter(p=>p.properties['Statut']?.select?.name==='En cours').length} en cours`;
+  // ── KPIs : commission et capital sur clients SIGNÉS uniquement ───────────
+  const totalComm = signes.reduce((s, p) =>
+    s + formulaNum(p.properties['Commission due (€)']), 0);
+
+  const totalCapital = signes.reduce((s, p) => {
+    const v = p.properties['Capital investi (€)']?.number;
+    return s + (typeof v === 'number' ? v : 0);
+  }, 0);
+
+  // ── Affichage stats ──────────────────────────────────────────────────────
+  document.getElementById('total-comm').textContent    = fmt(totalComm);
+  document.getElementById('comm-sub').textContent      =
+    `${nbSignes} client${nbSignes !== 1 ? 's' : ''} signé${nbSignes !== 1 ? 's' : ''}`;
+
+  document.getElementById('total-clients').textContent = nbActifs;
+  const subParts = [];
+  if (enCours.length) subParts.push(`${enCours.length} en cours`);
+  if (perdus.length)  subParts.push(`${perdus.length} perdu${perdus.length !== 1 ? 's' : ''}`);
+  document.getElementById('clients-sub').textContent   =
+    subParts.length ? subParts.join(' · ') : 'aucun dossier en cours';
+
   document.getElementById('total-capital').textContent = fmt(totalCapital);
-  document.getElementById('capital-sub').textContent = 'géré via AlphaWise';
+  document.getElementById('capital-sub').textContent   = 'capital signé via AlphaWise';
 
-  // Palier
-  const palierIdx = getPalier(totalClients);
-  const nextThreshold = palierThresholds[Math.min(palierIdx + 1, 4)] || 50;
-  const prevThreshold = palierThresholds[palierIdx];
-  const range = nextThreshold - prevThreshold;
-  const progress = range > 0 ? Math.min((totalClients - prevThreshold) / range * 100, 100) : 100;
+  // ── Palier (basé sur clients SIGNÉS) ────────────────────────────────────
+  const palierIdx      = getPalier(nbSignes);
+  const prevMax        = palierIdx > 0 ? palierMaxClients[palierIdx - 1] : 0;
+  const nextMax        = palierIdx < 4 ? palierMaxClients[palierIdx]     : 50;
+  const range          = nextMax - prevMax;
+  const progress       = range > 0
+    ? Math.min((nbSignes - prevMax) / range * 100, 100)
+    : 100;
 
   document.getElementById('palier-badge').textContent = `Palier ${palierIdx + 1}`;
-  document.getElementById('track-left').textContent = `${totalClients} client${totalClients > 1 ? 's' : ''}`;
-  document.getElementById('track-right').textContent = palierIdx < 4 ? `${nextThreshold - totalClients} pour P${palierIdx + 2}` : 'Palier max atteint 🎯';
-  setTimeout(() => { document.getElementById('track-fill').style.width = progress + '%'; }, 100);
+  document.getElementById('track-left').textContent   =
+    `${nbSignes} client${nbSignes !== 1 ? 's' : ''} signé${nbSignes !== 1 ? 's' : ''}`;
 
-  const steps = document.querySelectorAll('.step');
-  steps.forEach((s, i) => {
+  const remaining = palierIdx < 4 ? nextMax + 1 - nbSignes : 0;
+  document.getElementById('track-right').textContent  = palierIdx < 4
+    ? `${remaining} pour P${palierIdx + 2}`
+    : 'Palier max atteint 🎯';
+
+  setTimeout(() => {
+    document.getElementById('track-fill').style.width = progress + '%';
+  }, 100);
+
+  // Steps highlight
+  document.querySelectorAll('.step').forEach((s, i) => {
     s.classList.toggle('active', i === palierIdx);
     s.style.opacity = i <= palierIdx ? '1' : '0.4';
   });
 
+  // Message "prochain palier"
   if (palierIdx < 4) {
-    const remaining = nextThreshold - totalClients;
-    const baseComm = 390;
-    const currentBonus = palierBonus[palierIdx];
-    const nextBonus = palierBonus[palierIdx + 1];
-    const gain = Math.round(baseComm * (nextBonus - currentBonus));
-    document.getElementById('next-up').innerHTML = `Encore <strong style="color:var(--text)">${remaining} client${remaining > 1 ? 's' : ''}</strong> pour passer au palier ${palierIdx + 2} — +${gain} € de commission sur 10 000 € investis`;
+    const gain = Math.round(BASE_COMM_10K * (palierBonus[palierIdx + 1] - palierBonus[palierIdx]));
+    document.getElementById('next-up').innerHTML =
+      `Encore <strong style="color:var(--text)">${remaining} client${remaining !== 1 ? 's' : ''}</strong>`
+      + ` pour passer au palier ${palierIdx + 2}`
+      + ` — +${gain} € de commission par tranche de 10 000 € investis (horizon > 5 ans)`;
   } else {
-    document.getElementById('next-up').innerHTML = `<strong style="color:var(--green)">Palier maximum atteint.</strong> Commission à +50% vs Vivium sur chaque client.`;
+    document.getElementById('next-up').innerHTML =
+      `<strong style="color:var(--green)">Palier maximum atteint.</strong>`
+      + ` Commission à +50 % vs Vivium sur chaque nouveau client.`;
   }
 
-  // Chart — commission cumulée dans le temps
+  // ── Graphique : commission cumulée dans le temps (signés uniquement) ────
   const byMonth = {};
-  pages.forEach(p => {
+  signes.forEach(p => {
     const dateStr = p.properties['Date']?.date?.start;
     if (!dateStr) return;
-    const comm = p.properties['Commission due (€)']?.formula?.number || 0;
+    const comm = formulaNum(p.properties['Commission due (€)']);
+    if (!comm) return;
     const month = dateStr.slice(0, 7);
     byMonth[month] = (byMonth[month] || 0) + comm;
   });
 
+  document.getElementById('chart-loading').style.display = 'none';
+  document.getElementById('chart-wrap').style.display    = 'block';
+
   const sortedMonths = Object.keys(byMonth).sort();
+
+  if (sortedMonths.length === 0) {
+    document.getElementById('chart-wrap').innerHTML =
+      '<div class="empty-chart">Aucune commission enregistrée pour l\'instant</div>';
+    return;
+  }
+
   let cumul = 0;
   const cumulData = sortedMonths.map(m => { cumul += byMonth[m]; return cumul; });
   const labels = sortedMonths.map(m => {
     const [y, mo] = m.split('-');
-    return new Date(y, mo - 1).toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' });
+    return new Date(+y, +mo - 1).toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' });
   });
-
-  document.getElementById('chart-loading').style.display = 'none';
-  document.getElementById('chart-wrap').style.display = 'block';
 
   if (chartInstance) chartInstance.destroy();
   const ctx = document.getElementById('commChart').getContext('2d');
