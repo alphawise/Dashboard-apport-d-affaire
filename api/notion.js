@@ -1,5 +1,6 @@
 export const config = { api: { bodyParser: true } };
 
+// Database ID de "Tracking Apports d'affaires"
 const DB_ID = '58ad64f9-3805-4777-b927-2474606df624';
 
 export default async function handler(req, res) {
@@ -18,6 +19,7 @@ export default async function handler(req, res) {
     let hasMore = true;
     let startCursor;
 
+    // Pagination : récupère TOUTES les entrées de Hugo (max 100 par appel Notion)
     while (hasMore) {
       const payload = {
         sorts: [{ property: 'Date', direction: 'ascending' }],
