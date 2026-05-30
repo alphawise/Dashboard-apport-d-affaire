@@ -1,6 +1,6 @@
-//@version=5
+//@version=6
 indicator("Divergence RSI Bearish — Filtre Top de Marché",
-          shorttitle    = "RSI Bear Div",
+          shorttitle    = "RSI BearDiv",
           overlay       = false,
           max_bars_back = 500)
 
@@ -116,14 +116,14 @@ if not na(ph_price)
 
 // Losange jaune = divergence détectée au sommet C
 plotshape(divergence, "Divergence (C)",
-          shape    = shape.diamond,
+          style    = shape.diamond,
           location = location.abovebar,
           color    = color.yellow,
           size     = size.small)
 
 // Fond jaune clair = divergence en attente de cassure
-bgcolor(pending and not divergence ? color.new(color.yellow, 92) : na,
-        title="En attente cassure B")
+_bg_pending = pending and not divergence ? color.new(color.yellow, 92) : na
+bgcolor(_bg_pending, title="En attente cassure B")
 
 // ══════════════════════════════════════════════════════════════════
 // ÉTAPE 2 — SIGNAL D'ENTRÉE : RSI passe sous le niveau B
@@ -142,7 +142,7 @@ if pending and not na(b_level)
 
 // Triangle rouge = signal déclenché (cassure de B)
 plotshape(signal, "Signal — Cassure B",
-          shape    = shape.triangledown,
+          style    = shape.triangledown,
           location = location.abovebar,
           color    = color.red,
           size     = size.normal)
