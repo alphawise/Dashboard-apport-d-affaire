@@ -101,7 +101,7 @@ if not na(ph_price)
                                     min_rsi_b := val
                         
                         dist_ab = a_rsi_i - min_rsi_b
-                        if dist_ab >= min_ab_dist
+                        if dist_ab >= min_ab_dist and min_rsi_b >= 50
                             // Garder le A avec le RSI le plus haut (divergence la plus forte)
                             if na(best_a_rsi) or a_rsi_i > best_a_rsi
                                 best_a_rsi   := a_rsi_i
