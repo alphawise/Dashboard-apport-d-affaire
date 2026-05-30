@@ -11,7 +11,7 @@ g1 = "Détection du signal"
 rsi_len     = input.int(21,   "Période RSI",                          group=g1, minval=2)
 piv_n       = input.int(3,    "Pivot N (bougies de chaque côté)",     group=g1, minval=1, maxval=10)
 min_gap     = input.int(12,   "Écart mini entre A et C (sem.)",       group=g1, minval=2)
-max_gap     = input.int(100,  "Écart maxi entre A et C (sem.)",       group=g1, maxval=300)
+max_gap     = input.int(52,   "Écart maxi entre A et C (sem.)",       group=g1, maxval=300)
 rsi_floor   = input.float(55, "RSI mini au sommet C",                 group=g1, minval=0, maxval=100)
 min_ab_dist = input.float(5,  "Distance mini A→B sur RSI (points)",   group=g1, minval=0)
 
