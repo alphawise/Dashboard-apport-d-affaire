@@ -11,7 +11,7 @@ g1 = "Détection du signal"
 rsi_len     = input.int(21,   "Période RSI",                          group=g1, minval=2)
 piv_n       = input.int(3,    "Pivot N (bougies de chaque côté)",     group=g1, minval=1, maxval=10)
 min_gap     = input.int(12,   "Écart mini entre A et C (sem.)",       group=g1, minval=2)
-max_gap     = input.int(52,   "Écart maxi entre A et C (sem.)",       group=g1, maxval=200)
+max_gap     = input.int(100,  "Écart maxi entre A et C (sem.)",       group=g1, maxval=300)
 rsi_floor   = input.float(55, "RSI mini au sommet C",                 group=g1, minval=0, maxval=100)
 min_ab_dist = input.float(5,  "Distance mini A→B sur RSI (points)",   group=g1, minval=0)
 
@@ -30,31 +30,28 @@ hline(55, "55", color=color.new(color.purple, 20), linestyle=hline.style_dashed)
 hline(30, "30", color=color.new(color.gray, 30), linestyle=hline.style_dashed)
 
 // ══════════════════════════════════════════════════════════════════
-// DÉTECTION DES PIVOTS HAUTS
-// La confirmation arrive piv_n bougies après le pivot réel.
-// Pivot réel = bar_index - piv_n au moment de la confirmation.
+// STOCKAGE DE TOUS LES PIVOTS HAUTS (array)
+// Correction clé : on compare C contre TOUS les pivots dans la
+// fenêtre [min_gap, max_gap], pas seulement le dernier.
 // ══════════════════════════════════════════════════════════════════
 ph_price = ta.pivothigh(high, piv_n, piv_n)
 ph_rsi   = ta.pivothigh(rsi,  piv_n, piv_n)
 
-var float p1_price = na   // Prix au sommet A
-var float p1_rsi   = na   // RSI au sommet A
-var int   p1_bar   = na   // Barre du sommet A
+var float[] arr_price = array.new_float()
+var float[] arr_rsi   = array.new_float()
+var int[]   arr_bar   = array.new_int()
 
 // ══════════════════════════════════════════════════════════════════
 // ÉTAT — divergence en attente de cassure de B
 // ══════════════════════════════════════════════════════════════════
-var float b_level = na    // Niveau RSI du creux B
-var int   b_bar   = na    // Barre approximative de B (pour affichage)
-var bool  pending = false // Divergence validée, en attente du signal
+var float b_level   = na
+var float div_a_rsi = na   // RSI de A stocké pour l'invalidation
+var bool  pending   = false
 
 // ══════════════════════════════════════════════════════════════════
-// ÉTAPE 1 — DÉTECTION DE LA DIVERGENCE (formation du sommet C)
-//   ✔ Prix  : Higher High  (C.price > A.price)
-//   ✔ RSI   : Lower High   (C.rsi   < A.rsi  )
-//   ✔ Filtre: C.rsi > rsi_floor
-//   ✔ Fenêtre: min_gap ≤ écart A–C ≤ max_gap
-//   ✔ Distance A→B : A.rsi - B.rsi ≥ min_ab_dist
+// DÉTECTION DE LA DIVERGENCE (sommet C confirmé)
+// On cherche le meilleur A = pivot avec RSI le plus haut dans la
+// fenêtre, tel que : Prix HH  ET  RSI LH  ET  distance A→B ≥ seuil
 // ══════════════════════════════════════════════════════════════════
 divergence = false
 
@@ -63,56 +60,85 @@ if not na(ph_price)
     p2_price = ph_price
     p2_rsi   = ph_rsi
 
-    if p2_rsi > rsi_floor and not na(p1_bar)
-        gap = p2_bar - p1_bar
-        if gap >= min_gap and gap <= max_gap
-            if p2_price > p1_price and p2_rsi < p1_rsi
+    // Ajouter le pivot courant à l'array
+    array.push(arr_price, p2_price)
+    array.push(arr_rsi,   p2_rsi)
+    array.push(arr_bar,   p2_bar)
 
-                // Trouver B = minimum RSI entre A et C (exclu)
-                float min_rsi_ab = 100.0
-                int   min_rsi_i  = 1
-                for i = 1 to gap - 1
-                    val = rsi[piv_n + i]
-                    if val < min_rsi_ab
-                        min_rsi_ab := val
-                        min_rsi_i  := i
+    // Purger les pivots trop anciens (> max_gap)
+    while array.size(arr_bar) > 0
+        if p2_bar - array.get(arr_bar, 0) > max_gap
+            array.shift(arr_price)
+            array.shift(arr_rsi)
+            array.shift(arr_bar)
+        else
+            break
 
-                dist_ab = p1_rsi - min_rsi_ab
+    // Chercher le meilleur A parmi tous les pivots dans [min_gap, max_gap]
+    if p2_rsi > rsi_floor
+        n = array.size(arr_bar)
 
-                if dist_ab >= min_ab_dist
-                    divergence := true
-                    b_level    := min_rsi_ab
-                    b_bar      := p2_bar - min_rsi_i
-                    pending    := true
+        float best_a_rsi   = na
+        float best_b_level = na
+        int   best_a_bar   = na
+        float best_a_price = na
 
-                    // Ligne A→C sur le RSI (divergence)
-                    line.new(p1_bar, p1_rsi, p2_bar, p2_rsi,
-                             xloc  = xloc.bar_index,
-                             color = color.fuchsia,
-                             width = 2,
-                             style = line.style_arrow_right)
+        if n >= 2
+            for i = 0 to n - 2   // tous sauf le dernier = C courant
+                a_bar_i   = array.get(arr_bar,   i)
+                a_price_i = array.get(arr_price, i)
+                a_rsi_i   = array.get(arr_rsi,   i)
+                gap_i     = p2_bar - a_bar_i
 
-                    // Niveau B — ligne horizontale pointillée jaune
-                    // Étendu vers la droite pour visualiser la zone de cassure
-                    line.new(b_bar, min_rsi_ab, p2_bar + 30, min_rsi_ab,
-                             xloc  = xloc.bar_index,
-                             color = color.new(color.yellow, 20),
-                             width = 1,
-                             style = line.style_dashed)
+                if gap_i >= min_gap and gap_i <= max_gap
+                    if p2_price > a_price_i and p2_rsi < a_rsi_i
+                        // Trouver B = min RSI entre A et C
+                        float min_rsi_b = 100.0
+                        if gap_i > 1
+                            for j = 1 to gap_i - 1
+                                val = rsi[piv_n + (gap_i - j)]
+                                if val < min_rsi_b
+                                    min_rsi_b := val
+                        
+                        dist_ab = a_rsi_i - min_rsi_b
+                        if dist_ab >= min_ab_dist
+                            // Garder le A avec le RSI le plus haut (divergence la plus forte)
+                            if na(best_a_rsi) or a_rsi_i > best_a_rsi
+                                best_a_rsi   := a_rsi_i
+                                best_b_level := min_rsi_b
+                                best_a_bar   := a_bar_i
+                                best_a_price := a_price_i
 
-                    // Label B sur le RSI
-                    label.new(b_bar, min_rsi_ab - 3,
-                              text      = "B\n" + str.tostring(math.round(min_rsi_ab, 1)),
-                              xloc      = xloc.bar_index,
-                              yloc      = yloc.price,
-                              color     = color.new(color.yellow, 20),
-                              textcolor = color.black,
-                              style     = label.style_label_up,
-                              size      = size.tiny)
+        // Si un A valide a été trouvé → divergence confirmée
+        if not na(best_a_rsi)
+            divergence  := true
+            b_level     := best_b_level
+            div_a_rsi   := best_a_rsi
+            pending     := true
 
-    p1_price := p2_price
-    p1_rsi   := p2_rsi
-    p1_bar   := p2_bar
+            // Ligne A→C (divergence RSI)
+            line.new(best_a_bar, best_a_rsi, p2_bar, p2_rsi,
+                     xloc  = xloc.bar_index,
+                     color = color.fuchsia,
+                     width = 2,
+                     style = line.style_arrow_right)
+
+            // Niveau B — ligne pointillée jaune étendue vers la droite
+            line.new(best_a_bar, best_b_level, p2_bar + 40, best_b_level,
+                     xloc  = xloc.bar_index,
+                     color = color.new(color.yellow, 20),
+                     width = 1,
+                     style = line.style_dashed)
+
+            // Label B
+            label.new(p2_bar - (p2_bar - best_a_bar) / 2, best_b_level - 3,
+                      text      = "B  " + str.tostring(math.round(best_b_level, 1)),
+                      xloc      = xloc.bar_index,
+                      yloc      = yloc.price,
+                      color     = color.new(color.yellow, 20),
+                      textcolor = color.black,
+                      style     = label.style_label_up,
+                      size      = size.tiny)
 
 // Losange jaune = divergence détectée au sommet C
 plotshape(divergence, "Divergence (C)",
@@ -121,12 +147,11 @@ plotshape(divergence, "Divergence (C)",
           color    = color.yellow,
           size     = size.small)
 
-// Fond jaune clair = divergence en attente de cassure
 _bg_pending = pending and not divergence ? color.new(color.yellow, 92) : na
 bgcolor(_bg_pending, title="En attente cassure B")
 
 // ══════════════════════════════════════════════════════════════════
-// ÉTAPE 2 — SIGNAL D'ENTRÉE : RSI passe sous le niveau B
+// SIGNAL D'ENTRÉE : RSI croise sous le niveau B
 // ══════════════════════════════════════════════════════════════════
 signal = false
 
@@ -135,12 +160,12 @@ if pending and not na(b_level)
         signal  := true
         pending := false
 
-    // Invalidation : RSI repasse au-dessus du niveau A (divergence annulée)
-    if rsi > p1_rsi
-        pending := false
-        b_level := na
+    // Invalidation : RSI repasse au-dessus du sommet A (divergence annulée)
+    if not na(div_a_rsi) and rsi > div_a_rsi
+        pending   := false
+        b_level   := na
+        div_a_rsi := na
 
-// Triangle rouge = signal déclenché (cassure de B)
 plotshape(signal, "Signal — Cassure B",
           style    = shape.triangledown,
           location = location.abovebar,
@@ -150,12 +175,12 @@ plotshape(signal, "Signal — Cassure B",
 bgcolor(signal ? color.new(color.red, 78) : na, title="Signal déclenché")
 
 // ══════════════════════════════════════════════════════════════════
-// SUCCÈS / ÉCHEC — évalué fwd_bars semaines après le signal
+// SUCCÈS / ÉCHEC  (fwd_bars semaines après le signal)
 // ══════════════════════════════════════════════════════════════════
-var int total_div      = 0   // Divergences détectées
-var int total_signals  = 0   // Signaux déclenchés (cassure B)
-var int total_evaluated= 0   // Signaux évalués
-var int total_success  = 0   // Succès
+var int total_div       = 0
+var int total_signals   = 0
+var int total_evaluated = 0
+var int total_success   = 0
 
 if divergence and barstate.isconfirmed
     total_div += 1
@@ -197,6 +222,9 @@ if barstate.islast
                  ? math.round(total_success / total_evaluated * 100, 1)
                  : 0.0
     rate_color = win_rate >= 70 ? color.teal : win_rate >= 50 ? color.yellow : color.orange
+    conv_rate  = total_div > 0
+                 ? math.round(total_signals / total_div * 100, 1)
+                 : 0.0
 
     t = table.new(position.top_right, 2, 8,
                   bgcolor      = color.new(#0d0d1a, 5),
@@ -210,26 +238,27 @@ if barstate.islast
                text_halign=text.align_center, text_size=size.small)
     table.cell(t, 1, 0, "", bgcolor=color.new(color.purple, 20))
 
-    table.cell(t, 0, 1, "RSI(" + str.tostring(rsi_len) + ")  N=" + str.tostring(piv_n)
+    table.cell(t, 0, 1,
+               "RSI(" + str.tostring(rsi_len) + ")  N=" + str.tostring(piv_n)
                + "  A→B≥" + str.tostring(min_ab_dist) + "pts",
                text_color=color.silver, text_size=size.tiny)
-    table.cell(t, 1, 1, "Fenêtre " + str.tostring(min_gap) + "–" + str.tostring(max_gap) + " sem.",
+    table.cell(t, 1, 1,
+               "Fenêtre " + str.tostring(min_gap) + "–" + str.tostring(max_gap) + " sem.",
                text_color=color.silver, text_halign=text.align_right, text_size=size.tiny)
 
-    table.cell(t, 0, 2, "Divergences (A→B→C)",    text_color=color.silver, text_size=size.small)
+    table.cell(t, 0, 2, "Divergences (A→B→C)",     text_color=color.silver, text_size=size.small)
     table.cell(t, 1, 2, str.tostring(total_div),
                text_color=color.yellow, text_halign=text.align_right, text_size=size.small)
 
-    table.cell(t, 0, 3, "Signaux (cassure B)",     text_color=color.silver, text_size=size.small)
+    table.cell(t, 0, 3, "Signaux (cassure B)",      text_color=color.silver, text_size=size.small)
     table.cell(t, 1, 3, str.tostring(total_signals),
                text_color=color.white, text_halign=text.align_right, text_size=size.small)
 
-    table.cell(t, 0, 4, "Taux conversion div→sig", text_color=color.silver, text_size=size.tiny)
-    conv = total_div > 0 ? math.round(total_signals / total_div * 100, 1) : 0.0
-    table.cell(t, 1, 4, str.tostring(conv) + "%",
+    table.cell(t, 0, 4, "Taux conversion div→sig",  text_color=color.silver, text_size=size.tiny)
+    table.cell(t, 1, 4, str.tostring(conv_rate) + "%",
                text_color=color.silver, text_halign=text.align_right, text_size=size.tiny)
 
-    table.cell(t, 0, 5, "Signaux évalués",         text_color=color.silver, text_size=size.small)
+    table.cell(t, 0, 5, "Signaux évalués",          text_color=color.silver, text_size=size.small)
     table.cell(t, 1, 5, str.tostring(total_evaluated),
                text_color=color.white, text_halign=text.align_right, text_size=size.small)
 
@@ -238,6 +267,6 @@ if barstate.islast
     table.cell(t, 1, 6, str.tostring(total_success),
                text_color=color.teal, text_halign=text.align_right, text_size=size.small)
 
-    table.cell(t, 0, 7, "Taux de réussite",        text_color=color.silver, text_size=size.small)
+    table.cell(t, 0, 7, "Taux de réussite",         text_color=color.silver, text_size=size.small)
     table.cell(t, 1, 7, str.tostring(win_rate) + "%",
                text_color=rate_color, text_halign=text.align_right, text_size=size.small)
